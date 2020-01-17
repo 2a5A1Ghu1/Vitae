@@ -1,4 +1,7 @@
 // Copyright (c) 2014-2015 The Bitsend developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -6,12 +9,15 @@
 #include "masternode.h"
 #include "activemasternode.h"
 #include "obfuscation.h"
+#include "spork.h"
 //#include "core.h"
 #include "main.h"
 #include "util.h"
 #include "addrman.h"
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+
+#define MN_WINNER_MINIMUM_AGE 8000    // Age in seconds. This should be > MASTERNODE_REMOVAL_SECONDS to avoid misconfigured new nodes in the list.
 
 CCriticalSection cs_process_message;
 
@@ -292,6 +298,31 @@ int CMasternodeMan::CountEnabled()
     return i;
 }
 
+void CMasternodeMan::CountNetworks(int protocolVersion, int& ipv4, int& ipv6, int& onion)
+{
+    protocolVersion = protocolVersion == -1 ? GetMinMasternodePaymentsProto() : protocolVersion;
+
+    BOOST_FOREACH (CMasternode& mn, vMasternodes) {
+        mn.Check();
+        std::string strHost;
+        int port;
+        SplitHostPort(mn.addr.ToString(), port, strHost);
+        CNetAddr node = CNetAddr(strHost, false);
+        int nNetwork = node.GetNetwork();
+        switch (nNetwork) {
+            case 1 :
+                ipv4++;
+                break;
+            case 2 :
+                ipv6++;
+                break;
+            case 3 :
+                onion++;
+                break;
+        }
+    }
+}
+
 int CMasternodeMan::CountMasternodesAboveProtocol(int protocolVersion)
 {
     int i = 0;
@@ -303,6 +334,32 @@ int CMasternodeMan::CountMasternodesAboveProtocol(int protocolVersion)
     }
 
     return i;
+}
+
+int CMasternodeMan::stable_size ()
+{
+    int nStable_size = 0;
+    int nMinProtocol = ActiveProtocol();
+    int64_t nMasternode_Min_Age = MN_WINNER_MINIMUM_AGE;
+    int64_t nMasternode_Age = 0;
+
+    BOOST_FOREACH (CMasternode& mn, vMasternodes) {
+        if (mn.protocolVersion < nMinProtocol) {
+            continue; // Skip obsolete versions
+        }
+
+        nMasternode_Age = GetAdjustedTime() - mn.sigTime;
+        if ((nMasternode_Age) < nMasternode_Min_Age) {
+            continue; // Skip masternodes younger than (default) 8000 sec (MUST be > MASTERNODE_REMOVAL_SECONDS)
+        }
+        mn.Check ();
+        if (!mn.IsEnabled ())
+            continue; // Skip not-enabled masternodes
+
+        nStable_size++;
+    }
+
+    return nStable_size;
 }
 
 void CMasternodeMan::DsegUpdate(CNode* pnode)
@@ -345,7 +402,6 @@ return &mn;
 }
 return NULL;
 }
-
 
 CMasternode* CMasternodeMan::FindOldestNotInVec(const std::vector<CTxIn> &vVins, int nMinimumAge, int nMinimumActiveSeconds)
 {
@@ -587,7 +643,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             return;
         }
 
-        if(protocolVersion < PROTOCOL_VERSION) {
+        if(protocolVersion < GetMinMasternodePaymentsProto()) {
             LogPrintf("dsee - ignoring outdated Masternode %s protocol version %d\n", vin.ToString().c_str(), protocolVersion);
             return;
         }
@@ -705,7 +761,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             // use this as a peer
             addrman.Add(CAddress(addr), pfrom->addr, 2*60*60);
-            
+
              //doesn't support multisig addresses
             if(donationAddress.IsPayToScriptHash()){
               donationAddress = CScript();
@@ -718,7 +774,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             this->Add(mn);
 
             // if it matches our Masternode privkey, then we've been remotely activated
-            if(pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion == PROTOCOL_VERSION){
+            if(pubkey2 == activeMasternode.pubKeyMasternode && protocolVersion >= GetMinMasternodePaymentsProto()){
                 activeMasternode.EnableHotColdMasterNode(vin, addr);
             }
 
@@ -761,7 +817,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
         // see if we have this Masternode
         CMasternode* pmn = this->Find(vin);
-        if(pmn != NULL && pmn->protocolVersion >= PROTOCOL_VERSION)
+        if(pmn != NULL && pmn->protocolVersion >= GetMinMasternodePaymentsProto())
         {
             // LogPrintf("dseep - Found corresponding mn for vin: %s\n", vin.ToString().c_str());
             // take this only if it's newer
@@ -932,4 +988,12 @@ std::string CMasternodeMan::ToString() const
             ", nDsqCount: " << (int)nDsqCount;
 
     return info.str();
+}
+
+int CMasternodeMan::GetMinMasternodePaymentsProto()
+{
+    if (IsSporkActive(SPORK_21_MASTERNODE_PAY_UPDATED_NODES))
+        return ActiveProtocol();                          // Allow only updated peers
+    else
+        return MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT; // Also allow old peers as long as they are allowed to run
 }

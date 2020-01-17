@@ -1,4 +1,7 @@
 // Copyright (c) 2014-2015 The Bitsend developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -105,6 +108,8 @@ public:
 
     int CountEnabled();
 
+    void CountNetworks(int protocolVersion, int& ipv4, int& ipv6, int& onion);
+
     int CountMasternodesAboveProtocol(int protocolVersion);
 
     void DsegUpdate(CNode* pnode);
@@ -129,11 +134,14 @@ public:
     CMasternode* GetMasternodeByRank(int nRank, int64_t nBlockHeight, int minProtocol=0, bool fOnlyActive=true);
 
     void ProcessMasternodeConnections();
-    
+
     void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
 
     /// Return the number of (unique) Masternodes
     int size() { return vMasternodes.size(); }
+
+    /// Return the number of masternodes older than (default) 8000 seconds
+    int stable_size ();
 
     std::string ToString() const;
 
@@ -145,6 +153,9 @@ public:
     void RelayMasternodeEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64_t nNow, const bool stop);
 
     void Remove(CTxIn vin);
+
+	// Get Masternode Protocol Version
+	int GetMinMasternodePaymentsProto();
 };
 
 #endif

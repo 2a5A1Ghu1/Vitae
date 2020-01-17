@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The VITAE developers
+// Copyright (c) 2017 The PIVX developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -158,7 +158,11 @@ bool CalculateAccumulatorCheckpoint(int nHeight, uint256& nCheckpoint)
         nCheckpoint = 0;
         return true;
     }
-
+    if(nHeight >= 905470)
+    {   //Hardcode the Last accumlator checkpoint to fix accumlator issues
+        nCheckpoint = uint256("543aec517865075a828ec0054f5576452b624cf4f3f1d34ee5ee67c04ffaf4f0");
+        return true;
+    }
     //the checkpoint is updated every ten blocks, return current active checkpoint if not update block
     if (nHeight % 10 != 0) {
         nCheckpoint = chainActive[nHeight - 1]->nAccumulatorCheckpoint;

@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2016 The Dash developers
-// Copyright (c) 2015-2017 The VITAE developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -201,7 +202,7 @@ bool CActiveFundamentalnode::SendFundamentalnodePing(std::string& errorMessage)
          * AFTER MIGRATION TO V12 IS DONE
          */
 
-        if (IsSporkActive(SPORK_10_FUNDAMENTALNODE_PAY_UPDATED_NODES)) return true;
+        if (IsSporkActive(SPORK_19_FUNDAMENTALNODE_PAY_UPDATED_NODES)) return true;
         // for migration purposes ping our node on old fundamentalnodes network too
         std::string retErrorMessage;
         std::vector<unsigned char> vchFundamentalNodeSignature;
@@ -322,7 +323,7 @@ bool CActiveFundamentalnode::Register(CTxIn vin, CService service, CKey keyColla
      * AFTER MIGRATION TO V12 IS DONE
      */
 
-    if (IsSporkActive(SPORK_10_FUNDAMENTALNODE_PAY_UPDATED_NODES)) return true;
+    if (IsSporkActive(SPORK_19_FUNDAMENTALNODE_PAY_UPDATED_NODES)) return true;
     // for migration purposes inject our node in old fundamentalnodes' list too
     std::string retErrorMessage;
     std::vector<unsigned char> vchFundamentalNodeSignature;

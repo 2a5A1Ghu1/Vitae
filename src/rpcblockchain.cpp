@@ -1,7 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The VITAE developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -285,15 +286,15 @@ UniValue getblock(const UniValue& params, bool fHelp)
             "  \"moneysupply\" : \"supply\"       (numeric) The money supply when this block was added to the blockchain\n"
             "  \"zVITsupply\" :\n"
             "  {\n"
-            "     \"1\" : n,            (numeric) supply of 1 zVIT denomination\n"
-            "     \"5\" : n,            (numeric) supply of 5 zVIT denomination\n"
-            "     \"10\" : n,           (numeric) supply of 10 zVIT denomination\n"
-            "     \"50\" : n,           (numeric) supply of 50 zVIT denomination\n"
-            "     \"100\" : n,          (numeric) supply of 100 zVIT denomination\n"
-            "     \"500\" : n,          (numeric) supply of 500 zVIT denomination\n"
-            "     \"1000\" : n,         (numeric) supply of 1000 zVIT denomination\n"
-            "     \"5000\" : n,         (numeric) supply of 5000 zVIT denomination\n"
-            "     \"total\" : n,        (numeric) The total supply of all zVIT denominations\n"
+            "     \"1\" : n,            (numeric) supply of 1 zVITAE denomination\n"
+            "     \"5\" : n,            (numeric) supply of 5 zVITAE denomination\n"
+            "     \"10\" : n,           (numeric) supply of 10 zVITAE denomination\n"
+            "     \"50\" : n,           (numeric) supply of 50 zVITAE denomination\n"
+            "     \"100\" : n,          (numeric) supply of 100 zVITAE denomination\n"
+            "     \"500\" : n,          (numeric) supply of 500 zVITAE denomination\n"
+            "     \"1000\" : n,         (numeric) supply of 1000 zVITAE denomination\n"
+            "     \"5000\" : n,         (numeric) supply of 5000 zVITAE denomination\n"
+            "     \"total\" : n,        (numeric) The total supply of all zVITAE denominations\n"
             "  }\n"
             "}\n"
             "\nResult (for verbose=false):\n"
@@ -509,12 +510,44 @@ UniValue verifychain(const UniValue& params, bool fHelp)
     return CVerifyDB().VerifyDB(pcoinsTip, nCheckLevel, nCheckDepth);
 }
 
+/** Implementation of IsSuperMajority with better feedback */
+static UniValue SoftForkMajorityDesc(int minVersion, CBlockIndex* pindex, int nRequired)
+{
+    int nFound = 0;
+    CBlockIndex* pstart = pindex;
+    for (int i = 0; i < Params().ToCheckBlockUpgradeMajority() && pstart != NULL; i++)
+    {
+        if (pstart->nVersion >= minVersion)
+            ++nFound;
+        pstart = pstart->pprev;
+    }
+    UniValue rv(UniValue::VOBJ);
+    rv.push_back(Pair("status", nFound >= nRequired));
+    rv.push_back(Pair("found", nFound));
+    rv.push_back(Pair("required", nRequired));
+    rv.push_back(Pair("window", Params().ToCheckBlockUpgradeMajority()));
+    return rv;
+}
+
+static UniValue SoftForkDesc(const std::string &name, int version, CBlockIndex* pindex)
+{
+    UniValue rv(UniValue::VOBJ);
+    rv.push_back(Pair("id", name));
+    rv.push_back(Pair("version", version));
+    rv.push_back(Pair("enforce", SoftForkMajorityDesc(version, pindex, Params().EnforceBlockUpgradeMajority())));
+    rv.push_back(Pair("reject", SoftForkMajorityDesc(version, pindex, Params().RejectBlockOutdatedMajority())));
+    return rv;
+}
+
 UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 {
+    int newBlockVersion = 6; // SoftFork Ver for BIP65
+
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "getblockchaininfo\n"
             "Returns an object containing various state info regarding block chain processing.\n"
+
             "\nResult:\n"
             "{\n"
             "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
@@ -524,9 +557,25 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
             "  \"difficulty\": xxxxxx,     (numeric) the current difficulty\n"
             "  \"verificationprogress\": xxxx, (numeric) estimate of verification progress [0..1]\n"
             "  \"chainwork\": \"xxxx\"     (string) total amount of work in active chain, in hexadecimal\n"
+            "  \"softforks\": [            (array) status of softforks in progress\n"
+            "     {\n"
+            "        \"id\": \"xxxx\",        (string) name of softfork\n"
+            "        \"version\": xx,         (numeric) block version\n"
+            "        \"enforce\": {           (object) progress toward enforcing the softfork rules for new-version blocks\n"
+            "           \"status\": xx,       (boolean) true if threshold reached\n"
+            "           \"found\": xx,        (numeric) number of blocks with the new version found\n"
+            "           \"required\": xx,     (numeric) number of blocks required to trigger\n"
+            "           \"window\": xx,       (numeric) maximum size of examined window of recent blocks\n"
+            "        },\n"
+            "        \"reject\": { ... }      (object) progress toward rejecting pre-softfork blocks (same fields as \"enforce\")\n"
+            "     }, ...\n"
+            "  ]\n"
             "}\n"
+
             "\nExamples:\n" +
             HelpExampleCli("getblockchaininfo", "") + HelpExampleRpc("getblockchaininfo", ""));
+
+    LOCK(cs_main);
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain", Params().NetworkIDString()));
@@ -536,6 +585,10 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty", (double)GetDifficulty()));
     obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(chainActive.Tip())));
     obj.push_back(Pair("chainwork", chainActive.Tip()->nChainWork.GetHex()));
+    CBlockIndex* tip = chainActive.Tip();
+    UniValue softforks(UniValue::VARR);
+    softforks.push_back(SoftForkDesc("bip65", newBlockVersion, tip));
+    obj.push_back(Pair("softforks", softforks));
     return obj;
 }
 

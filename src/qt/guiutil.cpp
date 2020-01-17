@@ -161,7 +161,7 @@ bool parseBitcoinURI(const QUrl& uri, SendCoinsRecipient* out)
             fShouldReturnFalse = false;
         } else if (i->first == "amount") {
             if (!i->second.isEmpty()) {
-                if (!BitcoinUnits::parse(BitcoinUnits::VIT, i->second, &rv.amount)) {
+                if (!BitcoinUnits::parse(BitcoinUnits::VITAE, i->second, &rv.amount)) {
                     return false;
                 }
             }
@@ -196,7 +196,7 @@ QString formatBitcoinURI(const SendCoinsRecipient& info)
     int paramCount = 0;
 
     if (info.amount) {
-        ret += QString("?amount=%1").arg(BitcoinUnits::format(BitcoinUnits::VIT, info.amount, false, BitcoinUnits::separatorNever));
+        ret += QString("?amount=%1").arg(BitcoinUnits::format(BitcoinUnits::VITAE, info.amount, false, BitcoinUnits::separatorNever));
         paramCount++;
     }
 
@@ -378,6 +378,15 @@ void openConfigfile()
 }
 
 void openMNConfigfile()
+{
+    boost::filesystem::path pathConfig = GetMasternodeConfigFile();
+
+    /* Open fundamentalnode.conf with the associated application */
+    if (boost::filesystem::exists(pathConfig))
+        QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathConfig)));
+}
+
+void openFNConfigfile()
 {
     boost::filesystem::path pathConfig = GetFundamentalnodeConfigFile();
 

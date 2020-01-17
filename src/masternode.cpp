@@ -1,4 +1,6 @@
 // Copyright (c) 2014-2015 The Bitsend developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -262,7 +264,7 @@ void CMasternode::Check()
     if(!unitTest){
         CValidationState state;
         CMutableTransaction tx = CMutableTransaction();
-        CTxOut vout = CTxOut(9999.99 * COIN, obfuScationPool.collateralPubKey);
+        CTxOut vout = CTxOut(19999.99 * COIN, obfuScationPool.collateralPubKey);
         tx.vin.push_back(vin);
         tx.vout.push_back(vout);
 
@@ -322,7 +324,6 @@ bool CMasternodePayments::Sign(CMasternodePaymentWinner& winner)
     return true;
 }
 
-
 uint64_t CMasternodePayments::CalculateScore(uint256 blockHash, CTxIn& vin)
 {
 
@@ -340,7 +341,7 @@ uint64_t CMasternodePayments::CalculateScore(uint256 blockHash, CTxIn& vin)
     //printf(" -- CMasternodePayments CalculateScore() n2 = %d \n", n2.Get64());
     //printf(" -- CMasternodePayments CalculateScore() n3 = %d \n", n3.Get64());
     //printf(" -- CMasternodePayments CalculateScore() n4 = %d \n", n4.Get64());
- 
+
 }
 
 bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
@@ -452,7 +453,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     if(pmn != NULL)
     {
         LogPrintf(" Found by FindOldestNotInVec \n");
-        
+
         newWinner.score = 0;
         newWinner.nBlockHeight = nBlockHeight;
         newWinner.vin = pmn->vin;
@@ -462,7 +463,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
         } else {
             newWinner.payee=GetScriptForDestination(pmn->pubkey.GetID());
         }
-        
+
         payeeSource=GetScriptForDestination(pmn->pubkey.GetID());
     }
 
@@ -488,7 +489,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
                     newWinner.payee=GetScriptForDestination(pmn->pubkey.GetID());
                 }
                 payeeSource=GetScriptForDestination(pmn->pubkey.GetID());
-                
+
                 break; // we found active MN
             }
         }

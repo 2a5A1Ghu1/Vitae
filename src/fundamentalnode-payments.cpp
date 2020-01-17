@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The VITAE developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -233,7 +233,7 @@ bool IsBlockPayeeValid(const CBlock& block, int nBlockHeight)
         LogPrint("mnpayments", "Client not synced, skipping block payee checks\n");
         return true;
     }
-	
+
 	bool MasternodePayments = false;
 
 
@@ -531,7 +531,7 @@ void CFundamentalnodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_
 
 int CFundamentalnodePayments::GetMinFundamentalnodePaymentsProto()
 {
-    if (IsSporkActive(SPORK_10_FUNDAMENTALNODE_PAY_UPDATED_NODES))
+    if (IsSporkActive(SPORK_19_FUNDAMENTALNODE_PAY_UPDATED_NODES))
         return ActiveProtocol();                          // Allow only updated peers
     else
         return MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT; // Also allow old peers as long as they are allowed to run

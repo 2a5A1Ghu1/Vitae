@@ -7,6 +7,7 @@
 #include "walletmodel.h"
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QStyle>
 #include <boost/lexical_cast.hpp>
 
 using namespace std;
@@ -46,6 +47,7 @@ void MultiSendDialog::updateCheckBoxes()
 {
     ui->multiSendStakeCheckBox->setChecked(pwalletMain->fMultiSendStake);
     ui->multiSendFundamentalnodeCheckBox->setChecked(pwalletMain->fMultiSendFundamentalnodeReward);
+    ui->multiSendMasternodeCheckBox->setChecked(pwalletMain->fMultiSendMasternodeReward);
 }
 
 void MultiSendDialog::on_addressBookButton_clicked()
@@ -70,12 +72,23 @@ void MultiSendDialog::on_viewButton_clicked()
     std::pair<std::string, int> pMultiSend;
     std::string strMultiSendPrint = "";
     if (pwalletMain->isMultiSendEnabled()) {
-        if (pwalletMain->fMultiSendStake)
-            strMultiSendPrint += "MultiSend Active for Stakes\n";
+        if (pwalletMain->fMultiSendStake && pwalletMain->fMultiSendMasternodeReward && pwalletMain->fMultiSendMasternodeReward)
+            strMultiSendPrint += "MultiSend Active for Stake, Masternode, and Fundamentalnode Rewards\n";
+        else if (pwalletMain->fMultiSendStake && pwalletMain->fMultiSendMasternodeReward)
+            strMultiSendPrint += "MultiSend Active for Stakes and Masternode Rewards\n";
+        else if (pwalletMain->fMultiSendStake && pwalletMain->fMultiSendFundamentalnodeReward)
+            strMultiSendPrint += "MultiSend Active for Stakes and Fundamentalnode Rewards\n";
+        else if (pwalletMain->fMultiSendFundamentalnodeReward && pwalletMain->fMultiSendMasternodeReward)
+            strMultiSendPrint += "MultiSend Active for Fundamentalnode and Masternode Rewards\n";
         else if (pwalletMain->fMultiSendStake)
+            strMultiSendPrint += "MultiSend Active for Stakes\n";
+        else if (pwalletMain->fMultiSendFundamentalnodeReward)
             strMultiSendPrint += "MultiSend Active for Fundamentalnode Rewards\n";
-    } else
+        else if (pwalletMain->fMultiSendMasternodeReward)
+            strMultiSendPrint += "MultiSend Active for Masternode Rewards\n";
+    } else {
         strMultiSendPrint += "MultiSend Not Active\n";
+    }
 
     for (int i = 0; i < (int)pwalletMain->vMultiSend.size(); i++) {
         pMultiSend = pwalletMain->vMultiSend[i];
@@ -194,14 +207,15 @@ void MultiSendDialog::on_activateButton_clicked()
     std::string strRet = "";
     if (pwalletMain->vMultiSend.size() < 1)
         strRet = "Unable to activate MultiSend, check MultiSend vector\n";
-    else if (!(ui->multiSendStakeCheckBox->isChecked() || ui->multiSendFundamentalnodeCheckBox->isChecked())) {
-        strRet = "Need to select to send on stake and/or fundamentalnode rewards\n";
+    else if (!(ui->multiSendStakeCheckBox->isChecked() || ui->multiSendFundamentalnodeCheckBox->isChecked() || ui->multiSendMasternodeCheckBox->isChecked() )) {
+        strRet = "Need to select to send on stake and/or fundamentalnode/masternode rewards\n";
     } else if (CBitcoinAddress(pwalletMain->vMultiSend[0].first).IsValid()) {
         pwalletMain->fMultiSendStake = ui->multiSendStakeCheckBox->isChecked();
         pwalletMain->fMultiSendFundamentalnodeReward = ui->multiSendFundamentalnodeCheckBox->isChecked();
+        pwalletMain->fMultiSendMasternodeReward = ui->multiSendMasternodeCheckBox->isChecked();
 
         CWalletDB walletdb(pwalletMain->strWalletFile);
-        if (!walletdb.WriteMSettings(pwalletMain->fMultiSendStake, pwalletMain->fMultiSendFundamentalnodeReward, pwalletMain->nLastMultiSendHeight))
+        if (!walletdb.WriteMSettings(pwalletMain->fMultiSendStake, pwalletMain->fMultiSendFundamentalnodeReward,pwalletMain->fMultiSendMasternodeReward, pwalletMain->nLastMultiSendHeight))
             strRet = "MultiSend activated but writing settings to DB failed";
         else
             strRet = "MultiSend activated";
@@ -218,7 +232,7 @@ void MultiSendDialog::on_disableButton_clicked()
     std::string strRet = "";
     pwalletMain->setMultiSendDisabled();
     CWalletDB walletdb(pwalletMain->strWalletFile);
-    if (!walletdb.WriteMSettings(false, false, pwalletMain->nLastMultiSendHeight))
+    if (!walletdb.WriteMSettings(false, false, false, pwalletMain->nLastMultiSendHeight))
         strRet = "MultiSend deactivated but writing settings to DB failed";
     else
         strRet = "MultiSend deactivated";

@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The VITAE developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018 The VITAE developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -115,7 +116,7 @@ bool AppInit(int argc, char* argv[])
         //mn
         std::string strErrMn;
         if (!masternodeConfig.read(strErrMn)) {
-            fprintf(stderr, "Error reading fundamentalnode configuration file: %s\n", strErrMn.c_str());
+            fprintf(stderr, "Error reading masternode configuration file: %s\n", strErrMn.c_str());
             return false;
         }
 
